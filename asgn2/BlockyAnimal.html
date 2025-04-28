@@ -1,0 +1,63 @@
+<!-- nicholas mo -->
+<!-- nmo15@ucsc.edu -->
+
+<!-- notes for grader: -->
+<!-- please dont remove points for the slider!! I implemented the click and drag instead -->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>asg2 blocky animal</title>
+    <style>
+      #webgl {
+        border: 1px solid black;
+        background-color: black;
+        display: block;
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+
+  <body onload="main()">
+    
+    <canvas id="webgl" width="500" height="500">
+      Please use a browser that supports "canvas"
+    </canvas>
+
+    <style>
+      #fpsBox {
+        position: absolute; top: 8px; left: 8px;
+        padding: 2px 6px; font: 12px/14px monospace;
+        color: #0f0; background: rgba(0,0,0,.55); border-radius: 4px;
+      }
+    </style>
+    <div id="fpsBox">FPS&nbsp;0</div>
+
+    <p id="numdot"></p>
+
+    <button id="animOn">Start Animation</button>
+    <button id="animOff">Stop  Animation</button>
+   
+    <p>
+    legs 1 <input type="range" min="0" max="15" value="0" class="slider" id="leg1Slide">
+    <p>
+    legs 2 <input type="range" min="0" max="15" value="0" class="slider" id="leg2Slide">
+
+    <p>
+    sway <input type="range" min="-10" max="10" value="0" class="slider" id="sway">
+ 
+    <p>
+    Camera Angle <input type="range" min="0" max="90" value="5" class="slider" id="angleSlide">
+
+    <script src="cuon-utils.js"></script>
+    <script src="cuon-matrix-cse160.js"></script>
+    <script src="triangles.js"></script>
+    <script src="circles.js"></script>
+    <script src="BlockyAnimal.js"></script>
+    <script src="cube.js"></script>
+    <script src="sphere.js"></script>
+
+  
+</body>
+</html>
