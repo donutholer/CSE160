@@ -1,216 +1,199 @@
-// global var
-let gl = null;
+// asg3.js
 
-let world = [];
-let u_baseColorLoc      = null;
-let u_texColorWeightLoc = null;
-let camera = null;
+let canvas, gl;
+let a_Position, a_UV;
+let u_ModelMatrix, u_GlobalRotateMatrix;
+let u_ViewMatrix, u_ProjectionMatrix, u_Sampler0;
+let camera;
+let g_vertexCount;
 
+// Scene cubes
+let groundCube, skyCube;
+let wallCubes = [];
 
-
-let VERTEX_SHADER = `
+// Vertex shader
+const VSHADER_SOURCE = `
   precision mediump float;
-
-  attribute vec3 a_Position;
-  attribute vec3 a_Color;
+  attribute vec4 a_Position;
   attribute vec2 a_UV;
-
-  varying vec3 v_Color;
   varying vec2 v_UV;
-
-  uniform mat4 u_modelMatrix;
-  uniform mat4 u_viewMatrix;
-  uniform mat4 u_projectionMatrix;
-
+  uniform mat4 u_ModelMatrix;
+  uniform mat4 u_GlobalRotateMatrix;
+  uniform mat4 u_ViewMatrix;
+  uniform mat4 u_ProjectionMatrix;
   void main() {
-    v_Color = a_Color;
+    gl_Position = u_ProjectionMatrix * u_ViewMatrix * u_GlobalRotateMatrix * u_ModelMatrix * a_Position;
     v_UV = a_UV;
-    gl_Position = u_projectionMatrix * u_viewMatrix * u_modelMatrix * vec4(a_Position, 1.0);
-  }
-`;
-
-let FRAGMENT_SHADER = `
+  }`;
+// Fragment shader
+const FSHADER_SOURCE = `
   precision mediump float;
-
   varying vec2 v_UV;
-
-  uniform sampler2D u_Sampler;       // the texture
-  uniform vec4    u_baseColor;       // solid color
-  uniform float   u_texColorWeight;
-
+  uniform sampler2D u_Sampler0;
+  uniform vec4 u_BaseColor;
+  uniform float u_texColorWeight;
   void main() {
-    vec4 texColor = texture2D(u_Sampler, v_UV);
-    // linear interpolate: (1 − t)*base + t*texture
-    gl_FragColor = mix(u_baseColor, texColor, u_texColorWeight);
-  }
-`;
+    vec4 texColor = texture2D(u_Sampler0, v_UV);
+    gl_FragColor = mix(u_BaseColor, texColor, u_texColorWeight);
+  }`;
 
-function tick() {
-  renderWorld();
-  requestAnimationFrame(tick);
+function setupWebGL() {
+  canvas = document.getElementById('webgl');
+  gl = canvas.getContext('webgl');
+  gl.enable(gl.DEPTH_TEST);
 }
 
-function renderWorld(){
-  // retrieve uniforms
-  var u_modelMatrix = gl.getUniformLocation(gl.program, "u_modelMatrix");
-  let u_viewMatrix = gl.getUniformLocation(gl.program, "u_viewMatrix");
-  let u_projectionMatrix = gl.getUniformLocation(gl.program, "u_projectionMatrix");
+function connectVariablesToGLSL() {
+  if (!initShaders(gl, VSHADER_SOURCE, FSHADER_SOURCE)) return false;
+  const FSIZE = Float32Array.BYTES_PER_ELEMENT;
 
-  // create a view matrix
-  gl.uniformMatrix4fv(u_viewMatrix, false, camera.viewMatrix.elements);
-  gl.uniformMatrix4fv(u_projectionMatrix, false, camera.projectionMatrix.elements);
+  a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+  a_UV       = gl.getAttribLocation(gl.program, 'a_UV');
+  u_ModelMatrix        = gl.getUniformLocation(gl.program, 'u_ModelMatrix');
+  u_GlobalRotateMatrix = gl.getUniformLocation(gl.program, 'u_GlobalRotateMatrix');
+  u_ViewMatrix         = gl.getUniformLocation(gl.program, 'u_ViewMatrix');
+  u_ProjectionMatrix   = gl.getUniformLocation(gl.program, 'u_ProjectionMatrix');
+  u_Sampler0           = gl.getUniformLocation(gl.program, 'u_Sampler0');
+  u_BaseColor       = gl.getUniformLocation(gl.program, 'u_BaseColor');
+  u_texColorWeight  = gl.getUniformLocation(gl.program, 'u_texColorWeight');
 
-  // clear screen
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  // rendering loop
-  for (let geometry of world) {
+  const cube = new Cube();
+  g_vertexCount = cube.vertices.length / 8;
+  const vbo = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.bufferData(gl.ARRAY_BUFFER, cube.vertices, gl.STATIC_DRAW);
 
-    geometry.modelMatrix.multiply(geometry.translationMatrix);
-    geometry.modelMatrix.multiply(geometry.rotationZMatrix);
-    geometry.modelMatrix.multiply(geometry.scaleMatrix);
+  gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, FSIZE * 8, 0);
+  gl.enableVertexAttribArray(a_Position);
+  gl.vertexAttribPointer(a_UV, 2, gl.FLOAT, false, FSIZE * 8, FSIZE * 6);
+  gl.enableVertexAttribArray(a_UV);
 
-    if (geometry.isSky) {
-      gl.uniform4f(u_baseColorLoc, 0.4, 0.7, 1.0, 1.0);
-      gl.uniform1f(u_texColorWeightLoc, 0.0);
-    }
-    else {
-      gl.uniform4f(u_baseColorLoc, 1.0, 1.0, 1.0, 1.0);
-      gl.uniform1f(u_texColorWeightLoc, 1.0);
-    }
-
-    gl.uniformMatrix4fv(u_modelMatrix, false, geometry.modelMatrix.elements)
-    
-    gl.bufferData(gl.ARRAY_BUFFER, geometry.vertices, gl.STATIC_DRAW);
-
-    gl.drawArrays(gl.TRIANGLES, 0, geometry.vertices.length/8);
-  }
+  return true;
 }
 
-function loadTexture(src) {
-  // create a WebGL texture
-  var glTexture = gl.createTexture();
-
-  // Create an html <img> dynamically
-  var imgTag = new Image();
-  imgTag.src = src;
-
-  // this function is called when it is loaded
-  // and ready to be used (can take a few ms)
-  imgTag.onload = function() {
-    console.log("image", imgTag);
-
-    // send texture to gpu shader
-
-    // activate texture unit 0
+function initTextures() {
+  const img = new Image();
+  img.onload = () => {
+    // dirt texture on unit0
+    const tex0 = gl.createTexture();
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
     gl.activeTexture(gl.TEXTURE0);
-
-    // binding texture we created to the texture0 unit
-    gl.bindTexture(gl.TEXTURE_2D, glTexture);
-
-    // set minification filter, reduce resolution of a img
+    gl.bindTexture(gl.TEXTURE_2D, tex0);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+  };
+  img.src = 'imgs/dirt.jpg';
 
-    // map html image tag to the wbgl texture
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, imgTag);
+  // green 1x1 texture on unit1 for ground
+  const greenData = new Uint8Array([51, 179, 51, 255]);
+  const greenTex = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, greenTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, greenData);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 
-    // send texture to shader
-    let u_Sampler = gl.getUniformLocation(gl.program, "u_Sampler");
-    
-    gl.uniform1i(u_Sampler, 0);
+  // default sampler to unit0
+  gl.uniform1i(u_Sampler0, 0);
+  return true;
+}
 
-    renderWorld(world);
+
+function addControls(ev) {
+  switch(ev.keyCode) {
+    case 87: camera.moveForward();   break;
+    case 83: camera.moveBackwards(); break;
+    case 65: camera.moveLeft();      break;
+    case 68: camera.moveRight();     break;
+    case 81: camera.panLeft();       break;
+    case 69: camera.panRight();      break;
+  }
+}
+
+function setupScene() {
+  // Ground
+  groundCube = new Cube();
+  groundCube.matrix = new Matrix4()
+    .setTranslate(0, -0.1, 0)
+    .scale(100, 0.02, 100)
+    .translate(-0.5, 0, -0.5);
+  groundCube.color = [0.2,0.7,0.2,1];
+  groundCube.textureNum = 2;
+
+  // Skybox
+  skyCube = new Cube();
+  skyCube.matrix = new Matrix4();
+  skyCube.textureNum = 0;
+
+  // Walls
+  const positions = [
+    {x:0, z:-50, rotY:0},
+    {x:0, z:50, rotY:180},
+    {x:-50, z:0, rotY:90},
+    {x:50, z:0, rotY:-90}
+  ];
+  for (let p of positions) {
+    const w = new Cube();
+    w.matrix = new Matrix4()
+      .setTranslate(p.x, 0, p.z)
+      .rotate(p.rotY, 0,1,0)
+      .scale(100, 10, 1)
+      .translate(-0.5,-0.5,-0.5);
+    w.textureNum = 1;
+    wallCubes.push(w);
   }
 }
 
 function main() {
-  const canvas = document.getElementById("webgl");
-
-  gl = getWebGLContext(canvas);
-  if(!gl) {
-    console.log("Failed to get WebGL context.")
-    return -1;
-  }
-
-  gl.enable(gl.DEPTH_TEST);
-
-  gl.clearColor(0.0, 0.0, 0.0, 1.0);
-
-  gl.clear(gl.COLOR_BUFFER_BIT);
-
-  // let triangle1 = new Triangle();
-
-  let cube = new Cube();
-  cube.scale(0.5, 0.5, 0.5);
-
-  // world.push(triangle1);
-  world.push(cube);
-
-  if(!initShaders(gl, VERTEX_SHADER, FRAGMENT_SHADER)) {
-    console.log("Failed to compile and load shaders");
-    return -1;
-  }
-  u_baseColorLoc      = gl.getUniformLocation(gl.program, "u_baseColor");
-  u_texColorWeightLoc = gl.getUniformLocation(gl.program, "u_texColorWeight");
-
-  
-
-  let vertexBuffer = gl.createBuffer();
-  if(!vertexBuffer) {
-    console.log("Can't create buffer");
-    return -1;
-  }
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-
-  let FLOAT_SIZE = Float32Array.BYTES_PER_ELEMENT;
-
-  let a_Position = gl.getAttribLocation(gl.program, "a_Position");
-  gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 8 * FLOAT_SIZE, 0 * FLOAT_SIZE);
-  gl.enableVertexAttribArray(a_Position);
-
-  let a_Color = gl.getAttribLocation(gl.program, "a_Color");
-  gl.vertexAttribPointer(a_Color, 3, gl.FLOAT, false, 8 * FLOAT_SIZE, 3 * FLOAT_SIZE);
-  gl.enableVertexAttribArray(a_Color);
-
-  // setup a_UV attr in the shader
-  let a_UV = gl.getAttribLocation(gl.program, "a_UV");
-  gl.vertexAttribPointer(a_UV, 2, gl.FLOAT, false, 8 * FLOAT_SIZE, 6 * FLOAT_SIZE);
-  gl.enableVertexAttribArray(a_UV);
+  setupWebGL();
+  connectVariablesToGLSL();
+  initTextures();
 
   camera = new Camera(canvas);
-
   document.onkeydown = addControls;
 
-
-  // key listening
-  function addControls(ev) {
-    switch (ev.keyCode) {
-        case 87:
-            camera.moveForward();
-            break;
-        case 83:
-            camera.moveBackwards();
-            break;
-        case 68:
-            camera.moveRight();
-            break;
-        case 65:
-            camera.moveLeft();
-            break;
-        case 81:
-            camera.panLeft();
-            break;
-        case 69:
-            camera.panRight();
-            break;
-        default:
-          return;
-    }
-  }
-  requestAnimationFrame(tick);
-
-  // load texture
-  loadTexture("imgs/dirt.jpg");
-
+  setupScene();
+  requestAnimationFrame(renderLoop);
 }
+
+function renderLoop() {
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.uniformMatrix4fv(u_ProjectionMatrix, false, camera.projectionMatrix.elements);
+  gl.uniformMatrix4fv(u_ViewMatrix,       false, camera.viewMatrix.elements);
+  gl.uniformMatrix4fv(u_GlobalRotateMatrix, false, new Matrix4().elements);
+
+  // Main cube
+  gl.uniform4f(u_BaseColor, 1,1,1,1);
+  gl.uniform1f(u_texColorWeight, 1.0);
+  const mainM = new Matrix4().setScale(0.5,0.5,0.5);
+  gl.uniformMatrix4fv(u_ModelMatrix, false, mainM.elements);
+  gl.drawArrays(gl.TRIANGLES, 0, g_vertexCount);
+
+  // Ground
+  gl.uniform4f(u_BaseColor, 0.2,0.7,0.2,1);
+  gl.uniform1f(u_texColorWeight, 0.0);
+  gl.uniformMatrix4fv(u_ModelMatrix, false, groundCube.matrix.elements);
+  gl.drawArrays(gl.TRIANGLES, 0, g_vertexCount);
+
+  // Walls
+  gl.uniform4f(u_BaseColor, 1,1,1,1);
+  gl.uniform1f(u_texColorWeight, 1.0);
+  for (let w of wallCubes) {
+    gl.uniformMatrix4fv(u_ModelMatrix, false, w.matrix.elements);
+    gl.drawArrays(gl.TRIANGLES, 0, g_vertexCount);
+  }
+
+  // Skybox
+  gl.uniform4f(u_BaseColor, 0.5,0.7,1.0,1);
+  gl.uniform1f(u_texColorWeight, 0.0);
+  skyCube.matrix
+    .setTranslate(camera.eye.elements[0],camera.eye.elements[1],camera.eye.elements[2])
+    .scale(1000,1000,1000)
+    .translate(-0.5,-0.5,-0.5);
+  gl.uniformMatrix4fv(u_ModelMatrix, false, skyCube.matrix.elements);
+  gl.drawArrays(gl.TRIANGLES, 0, g_vertexCount);
+
+  requestAnimationFrame(renderLoop);
+}
+
+main();

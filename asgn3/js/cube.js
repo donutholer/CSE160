@@ -1,6 +1,7 @@
 class Cube extends Geometry {
   constructor() {
     super();
+    this.matrix = new Matrix4();
     this.vertices = new Float32Array([
       // Right face (red)
       1.0, -1.0,  1.0, 1.0, 0.0, 0.0, 1.0, 0.0,
