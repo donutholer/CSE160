@@ -15,13 +15,86 @@
             display: block;
             margin: 0 auto;
         }
+        #crosshair {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 20px; height: 20px;
+            pointer-events: none;
+        }
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255,255,255,0.8);
+        }
+        #crosshair::before {
+            left: 50%; top: 0;
+            width: 2px; height: 100%;
+            transform: translateX(-50%);
+        }
+        #crosshair::after {
+            top: 50%; left: 0;
+            width: 100%; height: 2px;
+            transform: translateY(-50%);
+        }
+        #fpsCounter {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 8px;
+            background: rgba(0,0,0,0.5);
+            color: #0f0;
+            font-family: monospace;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 100;
+        }
+        #startOverlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            cursor: pointer;
+        }
+        #startText {
+            text-align: center;
+            font-family: sans-serif;
+            line-height: 1.4;
+        }
+        #startText h2 {
+            margin-bottom: 0.5em;
+        }
+        #startText p {
+            margin: 0.3em 0;
+        }
     </style>
 </head>
 <body onload="main()">
-    <canvas id="webgl" width="800" height="800">
+    <div id="startOverlay">
+        <div id="startText">
+          <h2>Blocky World</h2>
+          <p>
+            Left‐click to enter the game<br>
+            Esc to exit the game
+          </p>
+          <p>
+            Left‐click to break blocks and escape the maze!<br>
+            Right‐click to repair mistakes. Gravity is implemented.<br>
+            A new random world every time!
+          </p>
+          <p><em>(Click anywhere to start)</em></p>
+        </div>
+      </div>
+    <canvas id="webgl" width="1800" height="1200">
         Your browser does not support HTML5 canvas
     </canvas>
+    <div id="crosshair"></div>
     <div id="fpsBox"></div>
+    <div id="fpsCounter"></div>
 
 
     <!-- Required Libraries -->
@@ -32,7 +105,7 @@
     
     
     <!-- Geometry Classes -->
-    <script src="js/geometry.js"></script> <!-- Add this if needed -->
+    <script src="js/geometry.js"></script>
     <script src="js/triangles.js"></script>
     <script src="js/cube.js"></script>
     <script src="js/camera.js"></script>
