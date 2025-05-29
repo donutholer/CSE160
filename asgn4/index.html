@@ -1,0 +1,123 @@
+<!-- nicholas mo -->
+<!-- nmo15@ucsc.edu -->
+
+<!-- notes for grader: -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Blocky World</title>
+    <style>
+        #webgl {
+            border: 1px solid black;
+            background-color: black;
+            display: block;
+            margin: 0 auto;
+        }
+        #crosshair {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 20px; height: 20px;
+            pointer-events: none;
+        }
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255,255,255,0.8);
+        }
+        #crosshair::before {
+            left: 50%; top: 0;
+            width: 2px; height: 100%;
+            transform: translateX(-50%);
+        }
+        #crosshair::after {
+            top: 50%; left: 0;
+            width: 100%; height: 2px;
+            transform: translateY(-50%);
+        }
+        #fpsCounter {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 8px;
+            background: rgba(0,0,0,0.5);
+            color: #0f0;
+            font-family: monospace;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 100;
+        }
+        #startOverlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            cursor: pointer;
+        }
+        #startText {
+            text-align: center;
+            font-family: sans-serif;
+            line-height: 1.4;
+        }
+        #startText h2 {
+            margin-bottom: 0.5em;
+        }
+        #startText p {
+            margin: 0.3em 0;
+        }
+    </style>
+</head>
+<body onload="main()">
+    <div id="startOverlay">
+        <div id="startText">
+          <h2>Blocky World</h2>
+          <p>
+            Left‐click to enter the game<br>
+            Esc to exit the game
+          </p>
+          <p>
+            Left‐click to break blocks and escape the maze!<br>
+            Right‐click to repair mistakes. Gravity is implemented.<br>
+            A new random world every time!
+          </p>
+          <p><em>(Click anywhere to start)</em></p>
+        </div>
+      </div>
+    <canvas id="webgl" width="1000" height="800">
+        Your browser does not support HTML5 canvas
+    </canvas>
+
+    <div id="light-controls" style="text-align:center; margin:8px;">
+        <label>X: <input type="range" id="sliderX" min="-10" max="10" step="0.1"></label>
+        <label>Y: <input type="range" id="sliderY" min="0"   max="10" step="0.1"></label>
+        <label>Z: <input type="range" id="sliderZ" min="-10" max="10" step="0.1"></label>
+    </div>
+    <button id="toggleNormals">Toggle Normal Visualization</button>
+
+
+    <div id="crosshair"></div>
+    <div id="fpsBox"></div>
+    <div id="fpsCounter"></div>
+
+
+    <script src="lib/cuon-matrix-cse160.js"></script>
+    <script src="lib/webgl-debug.js"></script>
+    <script src="lib/webgl-utils.js"></script>
+    <script src="lib/cuon-utils.js"></script>
+    
+    
+    <script src="js/geometry.js"></script>
+    <script src="js/triangles.js"></script>
+    <script src="js/sphere.js"></script>
+    <script src="js/cube.js"></script>
+    <script src="js/camera.js"></script>
+    
+    <script src="js/asg4.js"></script>
+</body>
+</html>
