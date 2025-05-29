@@ -1,5 +1,3 @@
-// sphere.js
-
 class Sphere {
     /**
      * @param {number} slices  subdivisions around equator
@@ -9,8 +7,7 @@ class Sphere {
       this.type       = "sphere";
       this.color      = [1, 1, 1, 1];
       this.matrix     = new Matrix4();
-      this.textureNum = -1;   // flat‐color branch
-      // temporary JS arrays
+      this.textureNum = -1;
       const positions = [];
       const normals   = [];
       const uvs       = [];
@@ -38,13 +35,11 @@ class Sphere {
         }
       }
   
-      // helper closes over positions/normals/uvs
       function pushTri(x1,y1,z1, x2,y2,z2, x3,y3,z3) {
         // positions
         positions.push(x1,y1,z1,  x2,y2,z2,  x3,y3,z3);
         // normals = same as pos for a unit sphere
         normals.push   (x1,y1,z1,  x2,y2,z2,  x3,y3,z3);
-        // equirectangular UVs
         uvs.push(
           0.5 + Math.atan2(z1,x1)/(2*Math.PI),  1 - (y1+1)/2,
           0.5 + Math.atan2(z2,x2)/(2*Math.PI),  1 - (y2+1)/2,
@@ -52,12 +47,10 @@ class Sphere {
         );
       }
   
-      // convert into typed arrays
       this.vertices = new Float32Array(positions);
       this.normals  = new Float32Array(normals);
       this.uvs      = new Float32Array(uvs);
   
-      // create & fill GPU buffers once
       this.posBuffer    = gl.createBuffer();
       this.normalBuffer = gl.createBuffer();
       this.uvBuffer     = gl.createBuffer();
